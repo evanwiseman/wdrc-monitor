@@ -1,0 +1,35 @@
+* {
+    background-color: #333;
+    color: white;
+    font-size: 15pt;
+}
+
+QDockWidget {
+    background-color: #222;
+    color: white;
+}
+
+QMenuBar {
+    background-color: #222;
+    color: white;
+}
+
+QPushButton {
+    background-color: #333;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 5px 10px;
+}
+QPushButton:hover {
+    background-color: #555;
+    color: white;
+}
+QPushButton:pressed {
+    background-color: #777;
+    color: white;
+}
+QPushButton:disabled {
+    background-color: #333;
+    color: #555;
+}
