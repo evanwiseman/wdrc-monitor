@@ -38,3 +38,7 @@ DEFAULT_MQTT_HOST = "localhost"
 DEFAULT_MQTT_PORT = 1883
 DEFAULT_MQTT_USERNAME = ""
 DEFAULT_MQTT_PASSWORD = ""
+
+# Health Monitor files
+MONITOR_CONFIG = CONFIG_DIR / "monitor.json"
+MONITOR_LOG = LOGS_DIR / "monitor.log"

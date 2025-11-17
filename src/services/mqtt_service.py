@@ -16,6 +16,7 @@ logger.addHandler(fh)
 
 
 class MqttService(QObject):
+    # pyqt signals for mqtt events
     message_signal = pyqtSignal(mqtt.MQTTMessage)
     connect_signal = pyqtSignal(bool)
     disconnect_signal = pyqtSignal(bool)

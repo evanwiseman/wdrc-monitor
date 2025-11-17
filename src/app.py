@@ -14,7 +14,7 @@ fh = logging.FileHandler(APP_LOG)
 logger.addHandler(fh)
 
 
-class Application(QApplication):
+class App(QApplication):
     def __init__(self, argv: list[str]) -> None:
         super().__init__(argv)
         self.config = AppConfig()

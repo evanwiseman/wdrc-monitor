@@ -46,6 +46,9 @@ class Config:
         with open(fp, "r") as f:
             self._data = json.load(f)
 
+    def get_dict(self) -> dict:
+        return self._data
+
 
 class AppConfig(Config):
     def __init__(self):

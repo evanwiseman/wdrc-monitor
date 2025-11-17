@@ -3,13 +3,13 @@ import sys
 
 from PyQt6.QtCore import QTimer
 
-from src.app import Application
+from src.app import App
 from src.services.mqtt_service import MqttService
 from src.ui.main_window import MainWindow
 
 
 def main():
-    app = Application(sys.argv)
+    app = App(sys.argv)
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     timer = QTimer()
