@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMainWindow, QWidget
 
@@ -8,10 +10,11 @@ class MainWindow(QMainWindow):
     def __init__(
         self,
         mqtt: MqttService,
-        parent: QWidget | None = None,
+        parent: Optional[QWidget] = None,
         flags: Qt.WindowType = Qt.WindowType.Window,
     ) -> None:
         super().__init__(parent, flags)
         self.mqtt = mqtt
 
+        self.setMinimumSize(600, 600)
         self.setMinimumSize(600, 600)
