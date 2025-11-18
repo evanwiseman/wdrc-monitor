@@ -1,9 +1,8 @@
-from .entry import Entry
-from .monitor import Monitor
+from .monitor import Monitor, MonitorEntry
 from .state import State
 
 __all__ = [
-    "Entry",
+    "MonitorEntry",
     "Monitor",
     "State",
 ]

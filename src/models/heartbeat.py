@@ -1,14 +1,76 @@
-from PyQt6.QtCore import QObject
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 
 class Heartbeat(QObject):
-    def __init__(self, name: str, cfg: dict) -> None:
+    timeout_signal = pyqtSignal()
+    tick_signal = pyqtSignal(int)
+
+    def __init__(self, name: str, retries_max: int, time_max: int) -> None:
         super().__init__()
-        self._name = name
-        pass
+        self._name: str = name
 
-    def _load(self, cfg: dict) -> None:
-        pass
+        self._retries: int = 0
+        self._retries_max: int = retries_max
 
-    def _validate_config_structure(self, cfg: dict) -> None:
-        pass
+        self._time: int = 0
+        self._time_max: int = time_max
+
+        self._timer = QTimer()
+        self._timer.setInterval(1000)
+        self._timer.timeout.connect(self._update_timer)
+
+        self._ping = -1
+
+    def _update_timer(self):
+        """
+        Update the timer, check if we've gone over time_max.
+        If over time, heartbeat has expired and increment retries.
+        Try again if retries are left.
+        """
+        self._time += 1
+        self.tick_signal.emit(self._time)
+
+        if self._time >= self._time_max:
+            self._retries += 1
+            self._time = 0
+
+        if self._is_timeout():
+            self.stop()
+            self.timeout_signal.emit()
+
+    def _update_ping(self, ping: int):
+        """Update the ping number, expecting a high number every time"""
+        if ping > self._ping:
+            self._ping = ping
+            self._time = 0
+            self.stop()
+            self.start()
+
+    def _is_timeout(self):
+        return self._retries > self._retries_max
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def start(self):
+        """Start the time to count 1 second, on expiration go to update_timer"""
+        if not self._timer.isActive():
+            self._timer.start()
+
+    def stop(self):
+        """Stop the timer"""
+        if self._timer.isActive():
+            self._timer.stop()
+
+    def reset(self):
+        """Reset the heartbeat, clearing time and retries"""
+        self._retries = 0
+        self._time = 0
+        self.stop()
+
+    def process(self, value: int):
+        """Process a ping value"""
+        if self._is_timeout():
+            return
+        self._update_ping(value)

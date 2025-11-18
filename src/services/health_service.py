@@ -58,7 +58,21 @@ class HealthService(QObject):
                 raise TypeError(
                     f"{__name__}: heartbeat '{key}' must be a dict, got {type(cfg)}"
                 )
-            self._heartbeats[key] = Heartbeat(key, cfg)
+
+            retries_max = cfg["retries_max"]
+            if not isinstance(retries_max, int):
+                raise TypeError(
+                    f"{__name__}: retries_max must be an int, got {type(retries_max)}"
+                )
+
+            time_max = cfg["time_max"]
+            if not isinstance(time_max, int):
+                raise TypeError(
+                    f"{__name__}: time_max must be an int, got {type(time_max)}"
+                )
+
+            heartbeat = Heartbeat(key, retries_max, time_max)
+            self._heartbeats[key] = heartbeat
 
     @property
     def version(self) -> int:
@@ -75,15 +89,41 @@ class HealthService(QObject):
         """Get all configured heartbeats."""
         return self._heartbeats
 
-    def process_monitor(self, cmd: str, value: int) -> Dict[str, Set[State]]:
-        """Process a monitor command with the given value."""
-        if cmd not in self._monitors:
-            raise KeyError(f"unknown monitor command {cmd}")
-        return self._monitors[cmd].process(value)
+    def process_message(self, msg: Dict):
+        cmd = msg["cmd"]
+        if not isinstance(cmd, str):
+            raise TypeError(f"unable to parse command, must be str, got {type(cmd)}")
 
-    def process_heartbeat(self, heartbeat_id: str) -> None:
+        if cmd in self._monitors:
+            value = msg["value"]
+            if not isinstance(value, int):
+                try:
+                    value = int(value, 0)
+                except Exception:
+                    raise TypeError(
+                        f"unable to parse value, must be int, got {type(value)}"
+                    )
+            self._process_monitor(cmd, value)
+
+        if cmd in self._heartbeats:
+            value = msg["value"]
+            if not isinstance(value, int):
+                try:
+                    value = int(value, 0)
+                except Exception:
+                    raise TypeError(
+                        f"unable to parse value, must be int, got {type(value)}"
+                    )
+            self._process_heartbeat(cmd, value)
+
+    def _process_monitor(self, monitor_id: str, value: int) -> Dict[str, Set[State]]:
+        """Process a monitor command with the given value."""
+        if monitor_id not in self._monitors:
+            raise KeyError(f"unknown monitor id: '{monitor_id}'")
+        return self._monitors[monitor_id].process(value)
+
+    def _process_heartbeat(self, heartbeat_id: str, value: int) -> None:
         """Process a heartbeat signal."""
         if heartbeat_id not in self._heartbeats:
-            raise KeyError(f"Unknown heartbeat: '{heartbeat_id}'")
-        # TODO: Implement heartbeat processing logic
-        self._heartbeats[heartbeat_id].process()
+            raise KeyError(f"Unknown heartbeat id: '{heartbeat_id}'")
+        self._heartbeats[heartbeat_id].process(value)

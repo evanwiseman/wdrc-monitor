@@ -6,8 +6,10 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QDockWidget,
+    QFrame,
     QLabel,
     QMainWindow,
+    QStatusBar,
     QTabWidget,
     QToolBar,
     QWidget,
@@ -15,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from src.services.health_service import HealthService
 from src.services.mqtt_service import MqttService
+from src.ui.widgets.heartbeat_widget import HeartbeatWidget
 from src.ui.widgets.monitor_widget import MonitorWidget
 from src.ui.widgets.scroll_widget import ScrollWidget
 
@@ -97,6 +100,24 @@ class MainWindow(QMainWindow):
             elif position == "bottom":
                 self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
 
+        status_bar = QStatusBar()
+        self.setStatusBar(status_bar)
+        separator = QFrame()
+
+        self.heartbeat_widgets: List[HeartbeatWidget] = []
+        hb_items = list(self.health_service.heartbeats.items())
+        for idx, (name, heartbeat) in enumerate(hb_items):
+            heartbeat_widget = HeartbeatWidget(heartbeat)
+            self.heartbeat_widgets.append(heartbeat_widget)
+            status_bar.addWidget(heartbeat_widget)
+
+            # Separator, only between widgets
+            if idx < len(hb_items) - 1:
+                separator = QFrame()
+                separator.setFrameShape(QFrame.Shape.VLine)
+                separator.setFrameShadow(QFrame.Shadow.Plain)
+                status_bar.addWidget(separator)
+
         # Create toolbar to monitor mqtt status
         self.mqtt_status_label = QLabel("Unknown")
         self.mqtt_status_label.setStyleSheet("color:gray;")
@@ -154,19 +175,15 @@ class MainWindow(QMainWindow):
         userdata: Set,
         mqtt_msg: mqtt.MQTTMessage,
     ):
+        msg: dict = json.loads(mqtt_msg.payload.decode("utf-8"))
         if "ppss/health" in mqtt_msg.topic.lower():
             try:
-                msg: dict = json.loads(mqtt_msg.payload.decode("utf-8"))
-                cmd = str(msg.get("cmd", ""))
-                if cmd in self.health_service.monitors:
-                    value = int(msg.get("value", 0))
-                    self.health_service.process_monitor(cmd, value)
-
-                    for widget in self.monitor_widgets:
-                        widget.update_all()
-
+                self.health_service.process_message(msg)
             except Exception as e:
                 print(str(e))
+
+        for widget in self.monitor_widgets:
+            widget.update_all()
 
     def handle_connect(
         self,

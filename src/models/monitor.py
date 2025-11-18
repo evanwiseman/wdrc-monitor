@@ -1,9 +1,25 @@
+from dataclasses import dataclass, field
 from typing import Dict, Set
 
 from PyQt6.QtCore import QObject
 
-from src.models.entry import Entry
 from src.models.state import State
+
+
+@dataclass
+class MonitorEntry:
+    name: str
+    masks: Dict[int, State] = field(default_factory=dict)
+    states: Set[State] = field(default_factory=lambda: {State.UNKNOWN})
+
+    def evaluate(self, value: int) -> Set[State]:
+        active = {state for mask, state in self.masks.items() if value & mask}
+
+        if not active:
+            active = {State.OFF}
+
+        self.states = active
+        return active
 
 
 class Monitor(QObject):
@@ -13,7 +29,7 @@ class Monitor(QObject):
         self._name = key
         self._color: str = ""
         self._dock: str = ""
-        self._entries: Dict[str, Entry] = {}
+        self._entries: Dict[str, MonitorEntry] = {}
 
         self._load(cfg)
 
@@ -38,7 +54,7 @@ class Monitor(QObject):
 
     def _load_entries(self, entries_cfg: dict) -> None:
         for key, cfg in entries_cfg.items():
-            entry = Entry(key)
+            entry = MonitorEntry(key)
             self._entries[key] = entry
             if not isinstance(cfg, dict):
                 raise TypeError(
@@ -69,5 +85,5 @@ class Monitor(QObject):
         return self._dock
 
     @property
-    def entries(self) -> Dict[str, Entry]:
+    def entries(self) -> Dict[str, MonitorEntry]:
         return self._entries
