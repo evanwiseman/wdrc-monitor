@@ -3,6 +3,7 @@
         "hw": {
             "color": "tan",
             "dock": "center",
+            "hidden": false,
             "entries": {
                 "Pin Strap 0": {
                     "masks": {
@@ -39,6 +40,7 @@
         "error": {
             "color": "red",
             "dock": "left",
+            "hidden": false,
             "entries":{
                 "PPSS Application Not Running On WDRC": {
                     "masks": {
@@ -65,6 +67,7 @@
         "warning": {
             "color": "orange",
             "dock": "left",
+            "hidden": false,
             "entries":{
                 "WDRC on the Open Thread Network is Detached": {
                     "masks": {
@@ -81,6 +84,7 @@
         "info": {
             "color": "white",
             "dock": "left",
+            "hidden": false,
             "entries": {
                 "WDRC on the Open Thread Network is the Leader": {
                     "masks": {

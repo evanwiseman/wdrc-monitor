@@ -1,6 +1,7 @@
 from typing import Optional
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QDockWidget, QMainWindow, QTabWidget, QWidget
 
 from src.services.health_service import HealthService
@@ -33,6 +34,15 @@ class MainWindow(QMainWindow):
         self.document_tabs.tabCloseRequested.connect(self.close_tab)
         self.setCentralWidget(self.document_tabs)
 
+        menubar = self.menuBar()
+
+        view_menu = menubar.addMenu("View")
+        self._view_actions: dict[str, QAction] = {}
+
+        file_menu = menubar.addMenu("File")
+        exit_action = file_menu.addAction("Exit")
+        exit_action.triggered.connect(self.close)
+
         # Create dock widgets for each monitor
         for name, monitor in self.health_service.monitors.items():
             monitor_widget = MonitorWidget(monitor)
@@ -42,6 +52,9 @@ class MainWindow(QMainWindow):
             position = monitor.dock.lower()
             if position == "center":
                 self.add_document(monitor_scroll, name)
+                action = self.create_tab_toggle_action(name, monitor_scroll)
+                view_menu.addAction(action)
+                self._view_actions[name] = action
                 continue
 
             dock = QDockWidget(name, self)
@@ -52,6 +65,9 @@ class MainWindow(QMainWindow):
                 | QDockWidget.DockWidgetFeature.DockWidgetClosable
                 | QDockWidget.DockWidgetFeature.DockWidgetFloatable
             )
+            action = dock.toggleViewAction()
+            view_menu.addAction(action)
+            self._view_actions[name] = action
 
             # Place dock based on monitor.dock
             if position == "left":
@@ -66,9 +82,38 @@ class MainWindow(QMainWindow):
     def close_tab(self, index: int):
         """Handle tab close requests"""
         widget = self.document_tabs.widget(index)
+
         if widget:
-            widget.deleteLater()
-        self.document_tabs.removeTab(index)
+            title = self.document_tabs.tabText(index)
+            self.document_tabs.removeTab(index)
+
+            # Uncheck the toggle action if it exists
+            action = self._view_actions.get(title)
+            if action and action.isChecked():
+                # Block signals to avoid triggering the toggled slot
+                action.blockSignals(True)
+                action.setChecked(False)
+                action.blockSignals(False)
+
+    def create_tab_toggle_action(self, name: str, widget: QWidget) -> QAction:
+        action = QAction(name, self)
+        action.setCheckable(True)
+        action.setChecked(True)  # initially visible
+
+        def toggled(checked: bool):
+            if checked:
+                # Add the tab back if it was hidden
+                if self.document_tabs.indexOf(widget) == -1:
+                    index = self.document_tabs.addTab(widget, name)
+                    self.document_tabs.setCurrentIndex(index)
+            else:
+                # Hide the tab
+                idx = self.document_tabs.indexOf(widget)
+                if idx != -1:
+                    self.document_tabs.removeTab(idx)
+
+        action.toggled.connect(toggled)
+        return action
 
     def add_document(self, widget: QWidget, title: str):
         """Add a new document tab"""
