@@ -1,5 +1,7 @@
-from typing import Optional
+import json
+from typing import List, Optional, Set
 
+import paho.mqtt.client as mqtt
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QDockWidget, QMainWindow, QTabWidget, QWidget
@@ -44,8 +46,10 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
 
         # Create dock widgets for each monitor
+        self.monitor_widgets: List[MonitorWidget] = []
         for name, monitor in self.health_service.monitors.items():
             monitor_widget = MonitorWidget(monitor)
+            self.monitor_widgets.append(monitor_widget)
             monitor_scroll = ScrollWidget()
             monitor_scroll.addWidget(monitor_widget)
 
@@ -120,3 +124,30 @@ class MainWindow(QMainWindow):
         index = self.document_tabs.addTab(widget, title)
         self.document_tabs.setCurrentIndex(index)
         return index
+
+    def handle_message(
+        self,
+        client: mqtt.Client,
+        userdata: Set,
+        mqtt_msg: mqtt.MQTTMessage,
+    ):
+        if "ppss/health" in mqtt_msg.topic.lower():
+            try:
+                mqtt_msg: dict = json.loads(mqtt_msg.payload.decode("utf-8"))
+                cmd = str(mqtt_msg.get("cmd", ""))
+                value = str(mqtt_msg.get("value", ""))
+                self.health_service.process(cmd, value)
+
+                for widget in self.monitor_widgets:
+                    widget.update_all()
+
+            except Exception as e:
+                print(str(e))
+
+    def handle_connect(
+        client: mqtt.Client,
+        userdata: Set,
+        flags: mqtt.ConnectFlags,
+        rc: mqtt.ReasonCode,
+    ):
+        pass

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, List
 
 from src.constants import (
     APP_CONFIG,
@@ -12,6 +12,7 @@ from src.constants import (
     DEFAULT_MQTT_HOST,
     DEFAULT_MQTT_PASSWORD,
     DEFAULT_MQTT_PORT,
+    DEFAULT_MQTT_SUBSCRIPTIONS,
     DEFAULT_MQTT_USERNAME,
     DEFAULT_ORGANIZATION_NAME,
     LIGHT_STYLESHEET,
@@ -131,3 +132,7 @@ class MqttConfig(Config):
     @property
     def password(self) -> str:
         return self._data.get("password", DEFAULT_MQTT_PASSWORD)
+
+    @property
+    def subscriptions(self) -> List[str]:
+        return self._data.get("subscriptions", DEFAULT_MQTT_SUBSCRIPTIONS)

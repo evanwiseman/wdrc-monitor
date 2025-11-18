@@ -1,10 +1,9 @@
-from typing import Dict, Optional, Set
+from typing import Dict, Optional
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from src.models.monitor import Monitor
-from src.models.state import State
 from src.ui.widgets.entry_widget import EntryWidget
 
 
@@ -38,8 +37,6 @@ class MonitorWidget(QWidget):
 
         self.setLayout(self._main_layout)
 
-    def update_all(self, states_dict: Dict[str, Set[State]]):
-        for name, states in states_dict:
-            if name not in self._entry_lookup:
-                raise KeyError(f"unknown entry {name}")
-            self._entry_lookup[name].states = states
+    def update_all(self):
+        for entry_widget in self._entry_lookup.values():
+            entry_widget.update_states()

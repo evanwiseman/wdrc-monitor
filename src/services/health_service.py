@@ -28,7 +28,7 @@ class HealthService:
     def monitors(self) -> Dict[str, Monitor]:
         return self._monitors
 
-    def processCommand(self, command: str, value: int) -> Dict[str, Set[State]]:
-        if command not in self._monitors:
-            raise KeyError(f"unknown command {command}")
-        return self._monitors[command].evaluate_all(value)
+    def process(self, cmd: str, value: int) -> Dict[str, Set[State]]:
+        if cmd not in self._monitors:
+            raise KeyError(f"unknown command {cmd}")
+        return self._monitors[cmd].evaluate_all(value)

@@ -8,12 +8,13 @@ from src.models.state import State
 class Entry:
     name: str
     masks: Dict[int, State] = field(default_factory=dict)
+    states: Set[State] = field(default_factory=lambda: {State.UNKNOWN})
 
     def evaluate(self, value: int) -> Set[State]:
         active = {state for mask, state in self.masks.items() if value & mask}
 
-        if active:
-            return active
+        if not active:
+            active = {State.OFF}
 
-        # If nothing matched, OFF is the implied state
-        return {State.OFF}
+        self.states = active
+        return active

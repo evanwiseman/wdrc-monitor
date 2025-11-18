@@ -1,10 +1,9 @@
-from typing import Optional, Set
+from typing import Optional
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 from src.models.entry import Entry
-from src.models.state import State
 from src.utils.ui import clear_layout
 
 
@@ -12,7 +11,6 @@ class EntryWidget(QWidget):
     def __init__(
         self,
         entry: Entry,
-        states: Set[State] = {State.UNKNOWN},
         color: str = "white",
         parent: Optional[QWidget] = None,
     ):
@@ -23,10 +21,9 @@ class EntryWidget(QWidget):
         self._entry_label.setStyleSheet(f"color: {color};")
         self._entry_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self._states = states
         self._states_layout = QHBoxLayout()
         self._states_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-        for state in states:
+        for state in entry.states:
             state_label = QLabel(state.value)
             state_label.setStyleSheet(f"color: {state.color()};")
             self._states_layout.addWidget(state_label)
@@ -46,16 +43,9 @@ class EntryWidget(QWidget):
         self._entry = value
         self._entry_label.setText(value.name)
 
-    @property
-    def states(self) -> Set[State]:
-        return self._states
-
-    @states.setter
-    def states(self, value: Set[State]) -> None:
-        self._states = value
+    def update_states(self) -> None:
         clear_layout(self._states_layout)
-
-        for state in value:
+        for state in self._entry.states:
             state_label = QLabel(state.value)
             state_label.setStyleSheet(f"color: {state.color()};")
             self._states_layout.addWidget(state_label)

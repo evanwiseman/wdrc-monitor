@@ -1,7 +1,8 @@
 import logging
+from typing import Set
 
 import paho.mqtt.client as mqtt
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 from src.config import MqttConfig
 from src.constants import MQTT_LOG
@@ -17,9 +18,10 @@ logger.addHandler(fh)
 
 class MqttService(QObject):
     # pyqt signals for mqtt events
-    message_signal = pyqtSignal(mqtt.MQTTMessage)
-    connect_signal = pyqtSignal(bool)
-    disconnect_signal = pyqtSignal(bool)
+    message_signal = pyqtSignal(object, object, object)
+    connect_signal = pyqtSignal(object, object, object, int)
+    connect_fail_signal = pyqtSignal(object, object, int)
+    disconnect_signal = pyqtSignal(object, object, int)
 
     def __init__(self):
         super().__init__()
@@ -28,7 +30,26 @@ class MqttService(QObject):
         self.client = mqtt.Client()
 
         self.client.on_connect = self._on_connect
+        self.client.on_connect_fail = self._on_connect_fail
+        self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
+
+        self.connected = False
+
+        # retry timer
+        self.retry_timer = QTimer()
+        self.retry_timer.setInterval(2000)  # 2 seconds
+        self.retry_timer.timeout.connect(self._attempt_reconnect)
+        self.retry_timer.start()
+
+        # start loop in background thread
+        self.client.loop_start()
+
+    def _attempt_reconnect(self):
+        """Called by timer — only tries if currently disconnected."""
+        if not self.connected:
+            logger.info("Trying to connect to MQTT broker...")
+            self.connect()
 
     def connect(self):
         try:
@@ -50,43 +71,52 @@ class MqttService(QObject):
     def publish(self, topic, payload, qos=0, retain=False):
         self.client.publish(topic, payload, qos, retain)
 
+    # ========================
+    # MQTT CALLBACKS
+    # ========================
+
     def _on_connect(
         self,
         client: mqtt.Client,
-        userdata: set,
+        userdata: Set,
         flags: mqtt.ConnectFlags,
-        rc: mqtt.ReasonCode,
+        rc: int,
     ):
-        logging.info(
-            f"connected {client.host}:{client.port}: {rc.getId} {rc.getName()}",
+        self.connected = True
+        for topic in self.config.subscriptions:
+            self.client.subscribe(topic)
+        logger.info(
+            f"connected {client.host}:{client.port}: {rc}",
         )
-
-    def _on_message(
-        self,
-        client: mqtt.Client,
-        userdata: set,
-        msg: mqtt.MQTTMessage,
-    ):
-        logging.info(
-            f"received message from {client.host}:{client.port} to {msg.topic}",
-        )
-        self.message_signal.emit(msg)
+        self.connect_signal.emit(client, userdata, flags, rc)
 
     def _on_connect_fail(
         self,
         client: mqtt.Client,
-        userdata: set,
-        rc: mqtt.ReasonCode,
+        userdata: Set,
+        rc: int,
     ):
-        pass
+        self.connected = False
+        logger.warning(
+            f"connect failed to {self.config.host}:{self.config.port} rc={rc}"
+        )
+        self.connect_fail_signal.emit(client, userdata, rc)
 
     def _on_disconnect(
         self,
         client: mqtt.Client,
-        userdata: set,
-        rc: mqtt.ReasonCode,
+        userdata: Set,
+        rc: int,
     ):
-        logger.info(
-            f"{self.config.host}:{self.config.port} - "
-            + "disconnected with rc: {rc.getId()} {rc.getName()}",
-        )
+        self.connected = False
+        logger.info(f"disconnected from {self.config.host}:{self.config.port} rc={rc}")
+        self.disconnect_signal.emit(client, userdata, rc)
+
+    def _on_message(
+        self,
+        client: mqtt.Client,
+        userdata: Set,
+        msg: mqtt.MQTTMessage,
+    ):
+        logger.info(f"received message on {msg.topic} from {self.config.host}")
+        self.message_signal.emit(client, userdata, msg)
