@@ -4,7 +4,14 @@ from typing import List, Optional, Set
 import paho.mqtt.client as mqtt
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QDockWidget, QMainWindow, QTabWidget, QWidget
+from PyQt6.QtWidgets import (
+    QDockWidget,
+    QLabel,
+    QMainWindow,
+    QTabWidget,
+    QToolBar,
+    QWidget,
+)
 
 from src.services.health_service import HealthService
 from src.services.mqtt_service import MqttService
@@ -27,6 +34,12 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 600)
         self.init_ui()
 
+        # Attach mqtt handlers
+        self.mqtt_service.connect_signal.connect(self.handle_connect)
+        self.mqtt_service.connect_fail_signal.connect(self.handle_connect_fail)
+        self.mqtt_service.disconnect_signal.connect(self.handle_disconnect)
+        self.mqtt_service.message_signal.connect(self.handle_message)
+
     def init_ui(self):
         # Central document area
         self.document_tabs = QTabWidget()
@@ -36,12 +49,13 @@ class MainWindow(QMainWindow):
         self.document_tabs.tabCloseRequested.connect(self.close_tab)
         self.setCentralWidget(self.document_tabs)
 
-        menubar = self.menuBar()
+        # Create menubar for document and dock control
+        menu_bar = self.menuBar()
 
-        view_menu = menubar.addMenu("View")
+        view_menu = menu_bar.addMenu("View")
         self._view_actions: dict[str, QAction] = {}
 
-        file_menu = menubar.addMenu("File")
+        file_menu = menu_bar.addMenu("File")
         exit_action = file_menu.addAction("Exit")
         exit_action.triggered.connect(self.close)
 
@@ -82,6 +96,15 @@ class MainWindow(QMainWindow):
                 self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, dock)
             elif position == "bottom":
                 self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+
+        # Create toolbar to monitor mqtt status
+        self.mqtt_status_label = QLabel("Unknown")
+        self.mqtt_status_label.setStyleSheet("color:gray;")
+        tool_bar = QToolBar()
+        tool_bar.setObjectName("mqttToolBar")
+        tool_bar.addWidget(QLabel("Connection Status:"))
+        tool_bar.addWidget(self.mqtt_status_label)
+        self.addToolBar(tool_bar)
 
     def close_tab(self, index: int):
         """Handle tab close requests"""
@@ -145,9 +168,29 @@ class MainWindow(QMainWindow):
                 print(str(e))
 
     def handle_connect(
+        self,
         client: mqtt.Client,
         userdata: Set,
         flags: mqtt.ConnectFlags,
         rc: mqtt.ReasonCode,
     ):
-        pass
+        self.mqtt_status_label.setText("Connected")
+        self.mqtt_status_label.setStyleSheet("color:green;")
+
+    def handle_connect_fail(
+        self,
+        client: mqtt.Client,
+        userdata: Set,
+        rc: int,
+    ):
+        self.mqtt_status_label.setText("Connection Failed")
+        self.mqtt_status_label.setStyleSheet("color:orange;")
+
+    def handle_disconnect(
+        self,
+        client: mqtt.Client,
+        userdata: Set,
+        rc: int,
+    ):
+        self.mqtt_status_label.setText("Disconnected")
+        self.mqtt_status_label.setStyleSheet("color:red;")

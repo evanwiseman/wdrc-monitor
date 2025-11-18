@@ -64,6 +64,7 @@ class MqttService(QObject):
             )
         except ConnectionRefusedError:
             logger.warning(f"connection refused {self.config.host}:{self.config.port}")
+            self._on_connect_fail(self.client, {}, 0x80)
 
     def subscribe(self, topic):
         self.client.subscribe(topic)

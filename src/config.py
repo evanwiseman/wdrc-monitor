@@ -119,7 +119,7 @@ class MqttConfig(Config):
 
     @property
     def host(self) -> str:
-        return self._data.get("broker", DEFAULT_MQTT_HOST)
+        return self._data.get("host", DEFAULT_MQTT_HOST)
 
     @property
     def port(self) -> int:
