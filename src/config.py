@@ -30,39 +30,42 @@ logger.addHandler(fh)
 
 
 class Config:
-    def __init__(self):
+    def __init__(self, fp: str):
+        self._fp = fp
         self._data: dict[str, Any] = {}
+
         try:
             self.load()
         except Exception as e:
             logger.warning(f"failed to load app config: {str(e)}")
 
-    def save(self, fp: str):
+    def save(self):
         """Saves the config to the specified filepath"""
-        with open(fp, "w") as f:
+        with open(self._fp, "w") as f:
             json.dump(self._data, f, indent=4)
 
-    def load(self, fp: str):
+    def load(self):
         """Loads the config from the specified filepath"""
-        with open(fp, "r") as f:
+        with open(self._fp, "r") as f:
             self._data = json.load(f)
 
-    def get_dict(self) -> dict:
+    @property
+    def data(self) -> dict:
         return self._data
 
 
 class AppConfig(Config):
     def __init__(self):
         """Application config loads from json"""
-        super().__init__()
+        super().__init__(APP_CONFIG)
 
     def save(self):
         """Saves the config to the APP_CONFIG"""
-        return super().save(APP_CONFIG)
+        return super().save()
 
     def load(self):
         """Loads the config from the APP_CONFIG"""
-        return super().load(APP_CONFIG)
+        return super().load()
 
     @property
     def name(self) -> str:
@@ -109,13 +112,13 @@ class AppConfig(Config):
 
 class MqttConfig(Config):
     def __init__(self):
-        super().__init__()
+        super().__init__(MQTT_CONFIG)
 
     def save(self):
-        return super().save(MQTT_CONFIG)
+        return super().save()
 
     def load(self):
-        return super().load(MQTT_CONFIG)
+        return super().load()
 
     @property
     def host(self) -> str:

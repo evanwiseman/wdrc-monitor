@@ -156,13 +156,14 @@ class MainWindow(QMainWindow):
     ):
         if "ppss/health" in mqtt_msg.topic.lower():
             try:
-                mqtt_msg: dict = json.loads(mqtt_msg.payload.decode("utf-8"))
-                cmd = str(mqtt_msg.get("cmd", ""))
-                value = str(mqtt_msg.get("value", ""))
-                self.health_service.process(cmd, value)
+                msg: dict = json.loads(mqtt_msg.payload.decode("utf-8"))
+                cmd = str(msg.get("cmd", ""))
+                if cmd in self.health_service.monitors:
+                    value = int(msg.get("value", 0))
+                    self.health_service.process_monitor(cmd, value)
 
-                for widget in self.monitor_widgets:
-                    widget.update_all()
+                    for widget in self.monitor_widgets:
+                        widget.update_all()
 
             except Exception as e:
                 print(str(e))

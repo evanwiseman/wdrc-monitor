@@ -121,5 +121,7 @@ class MqttService(QObject):
         userdata: Set,
         msg: mqtt.MQTTMessage,
     ):
-        logger.info(f"received message on {msg.topic} from {self.config.host}")
+        logger.info(
+            f"received message on {msg.topic} from {self.config.host}: {msg.payload}"
+        )
         self.message_signal.emit(client, userdata, msg)

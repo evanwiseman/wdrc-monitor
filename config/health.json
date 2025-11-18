@@ -1,4 +1,19 @@
 {
+    "version": 1,
+    "heartbeats": {
+        "wdlmping": {
+            "retries": 3,
+            "time": 60
+        },
+        "ppssping": {
+            "retries": 3,
+            "time": 60
+        },
+        "ping": {
+            "retries": 3,
+            "time": 60
+        }
+    },
     "monitors": {
         "hw": {
             "color": "tan",

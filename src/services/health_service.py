@@ -1,34 +1,89 @@
 import json
 from typing import Dict, Set
 
+from PyQt6.QtCore import QObject
+
 from src.constants import HEALTH_CONFIG
+from src.models.heartbeat import Heartbeat
 from src.models.monitor import Monitor
 from src.models.state import State
 
 
-class HealthService:
+class HealthService(QObject):
     def __init__(self):
-        fp = HEALTH_CONFIG
+        super().__init__()
         self._monitors: Dict[str, Monitor] = {}
+        self._heartbeats: Dict[str, Heartbeat] = {}
+        self._version: int = 0
 
-        with open(fp, "r") as f:
+        self._load_config()
+
+    def _load_config(self):
+        """Load and parse health configuration from JSON file."""
+        with open(HEALTH_CONFIG, "r") as f:
             data = json.load(f)
 
-            if not isinstance(data, dict):
-                raise TypeError(f"invalid type in {fp}")
+        self._validate_config_structure(data)
+        self._version = data["version"]
+        self._load_monitors(data["monitors"])
+        self._load_heartbeats(data["heartbeats"])
 
-            monitors_cfg = data.get("monitors")
-            if isinstance(monitors_cfg, dict):
-                for k, v in monitors_cfg.items():
-                    if not isinstance(v, dict):
-                        raise TypeError("invalid type in monitor config file")
-                    self._monitors[k] = Monitor(k, v)
+    def _validate_config_structure(self, cfg: dict) -> None:
+        """Validate the basic structure of the configuration."""
+        if not isinstance(cfg, dict):
+            raise TypeError(f"{__name__}: config must be a dict, got {type(cfg)}")
+
+        if "version" not in cfg or not isinstance(cfg["version"], int):
+            raise TypeError(f"{__name__}: 'version' must be an int")
+
+        if "monitors" not in cfg or not isinstance(cfg["monitors"], dict):
+            raise TypeError(f"{__name__}: 'monitors' must be a dict")
+
+        if "heartbeats" not in cfg or not isinstance(cfg["heartbeats"], dict):
+            raise TypeError(f"{__name__}: 'heartbeats' must be a dict")
+
+    def _load_monitors(self, monitors_cfg: dict) -> None:
+        """Load monitor configurations."""
+        for key, cfg in monitors_cfg.items():
+            if not isinstance(cfg, dict):
+                raise TypeError(
+                    f"{__name__}: monitor '{key}' must be a dict, got {type(cfg)}"
+                )
+            self._monitors[key] = Monitor(key, cfg)
+
+    def _load_heartbeats(self, heartbeats_cfg: dict) -> None:
+        """Load heartbeat configurations."""
+        for key, cfg in heartbeats_cfg.items():
+            if not isinstance(cfg, dict):
+                raise TypeError(
+                    f"{__name__}: heartbeat '{key}' must be a dict, got {type(cfg)}"
+                )
+            self._heartbeats[key] = Heartbeat(key, cfg)
+
+    @property
+    def version(self) -> int:
+        """Get the configuration version."""
+        return self._version
 
     @property
     def monitors(self) -> Dict[str, Monitor]:
+        """Get all configured monitors."""
         return self._monitors
 
-    def process(self, cmd: str, value: int) -> Dict[str, Set[State]]:
+    @property
+    def heartbeats(self) -> Dict[str, Heartbeat]:
+        """Get all configured heartbeats."""
+        return self._heartbeats
+
+    def process_monitor(self, cmd: str, value: int) -> Dict[str, Set[State]]:
+        """Process a monitor command with the given value."""
         if cmd not in self._monitors:
-            raise KeyError(f"unknown command {cmd}")
-        return self._monitors[cmd].evaluate_all(value)
+            raise KeyError(f"unknown monitor command {cmd}")
+        return self._monitors[cmd].process(value)
+
+    def process_heartbeat(self, heartbeat_id: str) -> None:
+        """Process a heartbeat signal."""
+        if heartbeat_id not in self._heartbeats:
+            raise KeyError(f"Unknown heartbeat: '{heartbeat_id}'")
+        # TODO: Implement heartbeat processing logic
+        self._heartbeats[heartbeat_id].process()
