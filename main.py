@@ -4,6 +4,7 @@ import sys
 from PyQt6.QtCore import QTimer
 
 from src.app import App
+from src.services.health_service import HealthService
 from src.services.mqtt_service import MqttService
 from src.ui.main_window import MainWindow
 
@@ -16,10 +17,12 @@ def main():
     timer.start(100)
     timer.timeout.connect(lambda: None)
 
-    mqtt = MqttService()
-    mqtt.connect()
+    mqtt_service = MqttService()
+    mqtt_service.connect()
 
-    main_window = MainWindow(mqtt)
+    monitor_service = HealthService()
+
+    main_window = MainWindow(mqtt_service, monitor_service)
     main_window.show()
 
     sys.exit(app.exec())

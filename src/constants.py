@@ -40,5 +40,5 @@ DEFAULT_MQTT_USERNAME = ""
 DEFAULT_MQTT_PASSWORD = ""
 
 # Health Monitor files
-MONITOR_CONFIG = CONFIG_DIR / "monitor.json"
-MONITOR_LOG = LOGS_DIR / "monitor.log"
+HEALTH_CONFIG = CONFIG_DIR / "health.json"
+HEALTH_LOG = LOGS_DIR / "health.log"

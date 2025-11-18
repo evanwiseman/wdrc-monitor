@@ -12,12 +12,15 @@ class EntryWidget(QWidget):
     def __init__(
         self,
         entry: Entry,
+        states: Set[State] = {State.UNKNOWN},
+        color: str = "white",
         parent: Optional[QWidget] = None,
-        states: Set[State] = State.UNKNOWN,
     ):
         super().__init__(parent)
+        self._color = color
         self._entry = entry
         self._entry_label = QLabel(entry.name)
+        self._entry_label.setStyleSheet(f"color: {color};")
         self._entry_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self._states = states
@@ -29,6 +32,7 @@ class EntryWidget(QWidget):
             self._states_layout.addWidget(state_label)
 
         self._main_layout = QHBoxLayout()
+        self._main_layout.setContentsMargins(0, 0, 0, 0)
         self._main_layout.addWidget(self._entry_label)
         self._main_layout.addLayout(self._states_layout)
         self.setLayout(self._main_layout)

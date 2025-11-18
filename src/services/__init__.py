@@ -1,7 +1,7 @@
-from .monitor_service import MonitorService
+from .health_service import HealthService
 from .mqtt_service import MqttService
 
 __all__ = [
-    "MonitorService",
+    "HealthService",
     "MqttService",
 ]
