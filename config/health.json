@@ -4,7 +4,7 @@
         "mqttping": {
             "name": "Ethernet Passthrough",
             "retry_limit": 3,
-            "time_limit": 60
+            "time_limit": 15
         },
         "ppssping": {
             "name": "PPSS Heartbeat",

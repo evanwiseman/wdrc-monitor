@@ -9,8 +9,8 @@ class Heartbeat(QObject):
         super().__init__()
         self._name: str = name
 
-        self._retries: int = 0
-        self._retries_max: int = retries_max
+        self._retry_attempt: int = 0
+        self._retry_limit: int = retries_max
 
         self._time: int = 0
         self._time_max: int = time_max
@@ -31,7 +31,7 @@ class Heartbeat(QObject):
         self.tick_signal.emit(self._time)
 
         if self._time >= self._time_max:
-            self._retries += 1
+            self._retry_attempt += 1
             self._time = 0
 
         if self._is_timeout():
@@ -47,7 +47,7 @@ class Heartbeat(QObject):
             self.start()
 
     def _is_timeout(self):
-        return self._retries > self._retries_max
+        return self._retry_attempt > self._retry_limit
 
     @property
     def name(self) -> str:
@@ -65,8 +65,9 @@ class Heartbeat(QObject):
 
     def reset(self):
         """Reset the heartbeat, clearing time and retries"""
-        self._retries = 0
+        self._retry_attempt = 0
         self._time = 0
+        self._ping = -1
         self.stop()
 
     def process(self, value: int):

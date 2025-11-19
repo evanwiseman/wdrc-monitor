@@ -107,6 +107,12 @@ class MainWindow(QMainWindow):
         hb_items = list(self.health_service.heartbeats.items())
         for idx, (key, heartbeat) in enumerate(hb_items):
             heartbeat_widget = HeartbeatWidget(heartbeat)
+            self._mqtt_service.connect_fail_signal.connect(
+                lambda: heartbeat_widget.reset()
+            )
+            self._mqtt_service.disconnect_signal.connect(
+                lambda: heartbeat_widget.reset()
+            )
             self._heartbeat_widgets.append(heartbeat_widget)
             status_bar.addWidget(heartbeat_widget)
 

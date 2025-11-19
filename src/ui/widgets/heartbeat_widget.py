@@ -27,6 +27,9 @@ class HeartbeatWidget(QWidget):
         # Show initial state
         self._update_label(0)
 
+    def reset(self):
+        self._hb.reset()
+
     def _on_tick(self, elapsed):
         self._update_label(elapsed)
 
@@ -35,8 +38,8 @@ class HeartbeatWidget(QWidget):
 
     def _update_label(self, elapsed):
         time_max = self._hb._time_max
-        retries = self._hb._retries
-        retries_max = self._hb._retries_max
+        retries = self._hb._retry_attempt
+        retries_max = self._hb._retry_limit
 
         self.label.setText(
             f"{elapsed}s / {time_max}s     {retries}/{retries_max} retries"
