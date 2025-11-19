@@ -21,6 +21,7 @@ from src.ui.widgets.heartbeat_widget import HeartbeatWidget
 from src.ui.widgets.monitor_widget import MonitorWidget
 from src.ui.widgets.mqtt_widget import MqttWidget
 from src.ui.widgets.scroll_widget import ScrollWidget
+from src.ui.widgets.wdlms_widget import WdlmsWidget
 
 
 class MainWindow(QMainWindow):
@@ -116,6 +117,30 @@ class MainWindow(QMainWindow):
                 separator.setFrameShadow(QFrame.Shadow.Plain)
                 status_bar.addWidget(separator)
 
+        self._wdlms_widget = WdlmsWidget(self.health_service.wdlms)
+        wdlm_scroll = ScrollWidget()
+        wdlm_scroll.addWidget(self._wdlms_widget)
+        dock = QDockWidget(self.health_service.wdlms.name, self)
+        dock.setWidget(wdlm_scroll)
+        dock.setObjectName("wdlmDockWidget")
+        dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetClosable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
+        action = dock.toggleViewAction()
+        view_menu.addAction(action)
+        self._view_actions["wdlm"] = action
+        # Place dock based on monitor.dock
+        if position == "left":
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+        elif position == "right":
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+        elif position == "top":
+            self.addDockWidget(Qt.DockWidgetArea.TopDockWidgetArea, dock)
+        elif position == "bottom":
+            self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+
         # Create toolbar to monitor mqtt status
         mqtt_widget = MqttWidget(self._mqtt_service)
 
@@ -189,3 +214,5 @@ class MainWindow(QMainWindow):
 
         for widget in self.monitor_widgets:
             widget.update_all()
+
+        self._wdlms_widget.update_all()

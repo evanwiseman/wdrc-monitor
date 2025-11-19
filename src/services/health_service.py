@@ -7,6 +7,7 @@ from src.constants import HEALTH_CONFIG
 from src.models.heartbeat import Heartbeat
 from src.models.monitor import Monitor
 from src.models.state import State
+from src.models.wdlms import Wdlms
 
 
 class HealthService(QObject):
@@ -27,6 +28,7 @@ class HealthService(QObject):
         self._version = data["version"]
         self._load_monitors(data["monitors"])
         self._load_heartbeats(data["heartbeats"])
+        self._load_wdlms(data["wdlms"])
 
     def _validate_config_structure(self, cfg: dict) -> None:
         """Validate the basic structure of the configuration."""
@@ -41,6 +43,9 @@ class HealthService(QObject):
 
         if "heartbeats" not in cfg or not isinstance(cfg["heartbeats"], dict):
             raise TypeError(f"{__name__}: 'heartbeats' must be a dict")
+
+        if "wdlms" not in cfg or not isinstance(cfg["wdlms"], dict):
+            raise TypeError(f"{__name__}: 'wdlms' msut be a dict")
 
     def _load_monitors(self, monitors_cfg: dict) -> None:
         """Load monitor configurations."""
@@ -83,6 +88,21 @@ class HealthService(QObject):
             heartbeat = Heartbeat(name, retry_limit, time_limit)
             self._heartbeats[key] = heartbeat
 
+    def _load_wdlms(self, wdlms_cfg: dict):
+        name = wdlms_cfg.get("name")
+        if not isinstance(name, str):
+            name = "WDLMs Status"
+
+        color = wdlms_cfg.get("color")
+        if not isinstance(color, str):
+            color = "white"
+
+        dock = wdlms_cfg.get("dock")
+        if not isinstance(color, str):
+            dock = "left"
+
+        self._wdlms = Wdlms(name, color, dock)
+
     @property
     def version(self) -> int:
         """Get the configuration version."""
@@ -97,6 +117,10 @@ class HealthService(QObject):
     def heartbeats(self) -> Dict[str, Heartbeat]:
         """Get all configured heartbeats."""
         return self._heartbeats
+
+    @property
+    def wdlms(self) -> Wdlms:
+        return self._wdlms
 
     def process_message(self, msg: Dict):
         cmd = msg["cmd"]
@@ -125,6 +149,12 @@ class HealthService(QObject):
                     )
             self._process_heartbeat(cmd, value)
 
+        if cmd.lower() == "wdlm":
+            value = msg["value"]
+            if not isinstance(value, str):
+                raise TypeError(f"unable to parse value, must be str, go {type(value)}")
+            self._process_wdlms(value)
+
     def _process_monitor(self, monitor_id: str, value: int) -> Dict[str, Set[State]]:
         """Process a monitor command with the given value."""
         if monitor_id not in self._monitors:
@@ -136,3 +166,6 @@ class HealthService(QObject):
         if heartbeat_id not in self._heartbeats:
             raise KeyError(f"Unknown heartbeat id: '{heartbeat_id}'")
         self._heartbeats[heartbeat_id].process(value)
+
+    def _process_wdlms(self, value: str) -> None:
+        self.wdlms.process(value)

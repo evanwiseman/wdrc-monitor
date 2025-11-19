@@ -60,20 +60,16 @@ class MonitorWidget(QWidget):
         super().__init__(parent)
         self.monitor = monitor
 
-        self._entry_layout = QVBoxLayout()
-
-        self._entry_layout.setSpacing(8)
+        self._main_layout = QVBoxLayout()
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self._main_layout.setContentsMargins(8, 8, 8, 8)
+        self._main_layout.setSpacing(8)
         self._entry_lookup: Dict[str, MonitorEntryWidget] = {}
 
-        for name, entry in sorted(monitor.entries.items()):
+        for key, entry in sorted(monitor.entries.items()):
             entry_widget = MonitorEntryWidget(entry, color=monitor.color)
-            self._entry_layout.addWidget(entry_widget)
-            self._entry_lookup[name] = entry_widget
-
-        self._main_layout = QVBoxLayout()
-        self._main_layout.setContentsMargins(8, 8, 8, 8)
-        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self._main_layout.addLayout(self._entry_layout)
+            self._main_layout.addWidget(entry_widget)
+            self._entry_lookup[key] = entry_widget
 
         self.setLayout(self._main_layout)
 

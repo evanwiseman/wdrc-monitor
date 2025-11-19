@@ -125,5 +125,10 @@
                 }
             }
         }
+    },
+    "wdlms": {
+        "name": "WDLMs Status",
+        "color": "cyan",
+        "dock": "left"
     }
 }
