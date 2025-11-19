@@ -1,9 +1,10 @@
 {
-    "host": "localhost",
+    "host": "192.168.100.100",
     "port": 1883,
     "username": "",
     "password": "",
     "subscriptions": [
         "ppss/health"
-    ]
+    ],
+    "retries_max": 3
 }

@@ -2,7 +2,7 @@ import logging
 from typing import Set
 
 import paho.mqtt.client as mqtt
-from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 
 from src.config import MqttConfig
 from src.constants import MQTT_LOG
@@ -16,7 +16,7 @@ fh = logging.FileHandler(MQTT_LOG)
 logger.addHandler(fh)
 
 
-class MqttService(QObject):
+class MqttService(QThread):
     # pyqt signals for mqtt events
     message_signal = pyqtSignal(object, object, object)
     connect_signal = pyqtSignal(object, object, object, int)
@@ -27,52 +27,40 @@ class MqttService(QObject):
         super().__init__()
         self.config = MqttConfig()
 
-        self.client = mqtt.Client()
-
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self._on_connect
-        self.client.on_connect_fail = self._on_connect_fail
-        self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
+        self.client.on_disconnect = self._on_disconnect
+        self.client.on_connect_fail = self._on_connect_fail
 
-        self.connected = False
+        self._retry_timer = QTimer()
+        self._retry_timer.setInterval(2000)
+        self._retry_timer.timeout.connect(self._retry)
 
-        # retry timer
-        self.retry_timer = QTimer()
-        self.retry_timer.setInterval(2000)  # 2 seconds
-        self.retry_timer.timeout.connect(self._attempt_reconnect)
-        self.retry_timer.start()
+        self._retries = 0
 
-        # start loop in background thread
-        self.client.loop_start()
-
-    def _attempt_reconnect(self):
-        """Called by timer — only tries if currently disconnected."""
-        if not self.connected:
-            logger.info("Trying to connect to MQTT broker...")
-            self.connect()
-
-    def connect(self):
+    def run(self):
         try:
-            self.client.username_pw_set(
-                username=self.config.username,
-                password=self.config.password,
-            )
+            # Set username and password, connect to MQTT broker, and start loop
+            self.client.username_pw_set(self.config.username, self.config.password)
+            self.client.connect(self.config.host, self.config.port)
+            self.client.loop_start()
+        except Exception:
+            self.stop()
+            self._on_connect_fail(self.client, None, 0x80)
 
-            self.client.connect(
-                host=self.config.host,
-                port=self.config.port,
-            )
-        except Exception as e:
-            logger.warning(
-                f"connection refused {self.config.host}:{self.config.port} - {e}"
-            )
-            self._on_connect_fail(self.client, {}, 0x80)
+    def stop(self):
+        # Stop loop, disconnect from broker, and quit thread
+        self.client.loop_stop()
+        self.client.disconnect()
+        self.quit()
 
-    def subscribe(self, topic):
-        self.client.subscribe(topic)
-
-    def publish(self, topic, payload, qos=0, retain=False):
-        self.client.publish(topic, payload, qos, retain)
+    def _retry(self):
+        if self._retries >= self.config.retries_max:
+            self._retry_timer.stop()
+            return
+        self._retries += 1
+        self.start()
 
     # ========================
     # MQTT CALLBACKS
@@ -88,9 +76,7 @@ class MqttService(QObject):
         self.connected = True
         for topic in self.config.subscriptions:
             self.client.subscribe(topic)
-        logger.info(
-            f"connected {client.host}:{client.port}: {rc}",
-        )
+        logger.info(f"connected to {client.host}:{client.port}: {rc}")
         self.connect_signal.emit(client, userdata, flags, rc)
 
     def _on_connect_fail(
@@ -101,8 +87,10 @@ class MqttService(QObject):
     ):
         self.connected = False
         logger.warning(
-            f"connect failed to {self.config.host}:{self.config.port} rc={rc}"
+            f"failed connecting to {self.config.host}:{self.config.port} rc={rc}"
         )
+
+        self._retry_timer.start()
         self.connect_fail_signal.emit(client, userdata, rc)
 
     def _on_disconnect(

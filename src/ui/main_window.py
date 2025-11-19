@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QFrame,
     QLabel,
     QMainWindow,
+    QMessageBox,
+    QPushButton,
     QStatusBar,
     QTabWidget,
     QToolBar,
@@ -31,17 +33,17 @@ class MainWindow(QMainWindow):
         flags: Qt.WindowType = Qt.WindowType.Window,
     ) -> None:
         super().__init__(parent, flags)
-        self.mqtt_service = mqtt_service
+        self._mqtt_service = mqtt_service
         self.health_service = health_service
 
         self.setMinimumSize(800, 600)
         self.init_ui()
 
         # Attach mqtt handlers
-        self.mqtt_service.connect_signal.connect(self.handle_connect)
-        self.mqtt_service.connect_fail_signal.connect(self.handle_connect_fail)
-        self.mqtt_service.disconnect_signal.connect(self.handle_disconnect)
-        self.mqtt_service.message_signal.connect(self.handle_message)
+        self._mqtt_service.connect_signal.connect(self.handle_connect)
+        self._mqtt_service.connect_fail_signal.connect(self.handle_connect_fail)
+        self._mqtt_service.disconnect_signal.connect(self.handle_disconnect)
+        self._mqtt_service.message_signal.connect(self.handle_message)
 
     def init_ui(self):
         # Central document area
@@ -104,11 +106,11 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status_bar)
         separator = QFrame()
 
-        self.heartbeat_widgets: List[HeartbeatWidget] = []
+        self._heartbeat_widgets: List[HeartbeatWidget] = []
         hb_items = list(self.health_service.heartbeats.items())
         for idx, (name, heartbeat) in enumerate(hb_items):
             heartbeat_widget = HeartbeatWidget(heartbeat)
-            self.heartbeat_widgets.append(heartbeat_widget)
+            self._heartbeat_widgets.append(heartbeat_widget)
             status_bar.addWidget(heartbeat_widget)
 
             # Separator, only between widgets
@@ -121,8 +123,13 @@ class MainWindow(QMainWindow):
         # Create toolbar to monitor mqtt status
         self.mqtt_status_label = QLabel("Unknown")
         self.mqtt_status_label.setStyleSheet("color:gray;")
+
+        self._connect_button = QPushButton("Connect")
+        self._connect_button.clicked.connect(self.handle_connect_button_clicked)
+
         tool_bar = QToolBar()
         tool_bar.setObjectName("mqttToolBar")
+        tool_bar.addWidget(self._connect_button)
         tool_bar.addWidget(QLabel("Connection Status:"))
         tool_bar.addWidget(self.mqtt_status_label)
         self.addToolBar(tool_bar)
@@ -169,6 +176,21 @@ class MainWindow(QMainWindow):
         self.document_tabs.setCurrentIndex(index)
         return index
 
+    # ========================
+    # Handlers
+    # ========================
+
+    def handle_timeout(self):
+        QMessageBox.warning(self, "Timeout", f"{self.sender.name} has timed out")
+        self._mqtt_service.disconnect()
+
+    def handle_connect_button_clicked(self):
+        if self._mqtt_service.client.is_connected():
+            self._mqtt_service.stop()
+        else:
+            self._connect_button.setText("Connecting...")
+            self._mqtt_service.start()
+
     def handle_message(
         self,
         client: mqtt.Client,
@@ -192,6 +214,7 @@ class MainWindow(QMainWindow):
         flags: mqtt.ConnectFlags,
         rc: mqtt.ReasonCode,
     ):
+        self._connect_button.setText("Disconnect")
         self.mqtt_status_label.setText("Connected")
         self.mqtt_status_label.setStyleSheet("color:green;")
 
@@ -201,6 +224,7 @@ class MainWindow(QMainWindow):
         userdata: Set,
         rc: int,
     ):
+        self._connect_button.setText("Connect")
         self.mqtt_status_label.setText("Connection Failed")
         self.mqtt_status_label.setStyleSheet("color:orange;")
 
@@ -210,5 +234,6 @@ class MainWindow(QMainWindow):
         userdata: Set,
         rc: int,
     ):
+        self._connect_button.setText("Connect")
         self.mqtt_status_label.setText("Disconnected")
         self.mqtt_status_label.setStyleSheet("color:red;")

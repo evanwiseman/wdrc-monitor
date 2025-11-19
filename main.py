@@ -18,14 +18,13 @@ def main():
     timer.timeout.connect(lambda: None)
 
     mqtt_service = MqttService()
-    mqtt_service.connect()
-
     monitor_service = HealthService()
 
     main_window = MainWindow(mqtt_service, monitor_service)
     main_window.show()
 
     sys.exit(app.exec())
+    mqtt_service.stop()
 
 
 if __name__ == "__main__":
