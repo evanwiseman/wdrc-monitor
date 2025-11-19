@@ -70,13 +70,9 @@ class MonitorWidget(QWidget):
             self._entry_layout.addWidget(entry_widget)
             self._entry_lookup[name] = entry_widget
 
-        name_label = QLabel(monitor.name)
-        name_label.setStyleSheet(f"color: {monitor.color};")
-
         self._main_layout = QVBoxLayout()
         self._main_layout.setContentsMargins(8, 8, 8, 8)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self._main_layout.addWidget(name_label)
         self._main_layout.addLayout(self._entry_layout)
 
         self.setLayout(self._main_layout)

@@ -6,5 +6,5 @@
     "subscriptions": [
         "ppss/health"
     ],
-    "retries_max": 3
+    "retry_limit": 3
 }

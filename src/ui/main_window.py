@@ -7,10 +7,8 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QDockWidget,
     QFrame,
-    QLabel,
     QMainWindow,
     QMessageBox,
-    QPushButton,
     QStatusBar,
     QTabWidget,
     QToolBar,
@@ -21,6 +19,7 @@ from src.services.health_service import HealthService
 from src.services.mqtt_service import MqttService
 from src.ui.widgets.heartbeat_widget import HeartbeatWidget
 from src.ui.widgets.monitor_widget import MonitorWidget
+from src.ui.widgets.mqtt_widget import MqttWidget
 from src.ui.widgets.scroll_widget import ScrollWidget
 
 
@@ -33,16 +32,13 @@ class MainWindow(QMainWindow):
         flags: Qt.WindowType = Qt.WindowType.Window,
     ) -> None:
         super().__init__(parent, flags)
+        self.setMinimumSize(800, 600)
+
         self._mqtt_service = mqtt_service
         self.health_service = health_service
 
-        self.setMinimumSize(800, 600)
         self.init_ui()
 
-        # Attach mqtt handlers
-        self._mqtt_service.connect_signal.connect(self.handle_connect)
-        self._mqtt_service.connect_fail_signal.connect(self.handle_connect_fail)
-        self._mqtt_service.disconnect_signal.connect(self.handle_disconnect)
         self._mqtt_service.message_signal.connect(self.handle_message)
 
     def init_ui(self):
@@ -66,7 +62,7 @@ class MainWindow(QMainWindow):
 
         # Create dock widgets for each monitor
         self.monitor_widgets: List[MonitorWidget] = []
-        for name, monitor in self.health_service.monitors.items():
+        for key, monitor in self.health_service.monitors.items():
             monitor_widget = MonitorWidget(monitor)
             self.monitor_widgets.append(monitor_widget)
             monitor_scroll = ScrollWidget()
@@ -74,15 +70,15 @@ class MainWindow(QMainWindow):
 
             position = monitor.dock.lower()
             if position == "center":
-                self.add_document(monitor_scroll, name)
-                action = self.create_tab_toggle_action(name, monitor_scroll)
+                self.add_document(monitor_scroll, monitor.name)
+                action = self.create_tab_toggle_action(monitor.name, monitor_scroll)
                 view_menu.addAction(action)
-                self._view_actions[name] = action
+                self._view_actions[key] = action
                 continue
 
-            dock = QDockWidget(name, self)
+            dock = QDockWidget(monitor.name, self)
             dock.setWidget(monitor_scroll)
-            dock.setObjectName(f"{name}DockWidget")
+            dock.setObjectName(f"{key}DockWidget")
             dock.setFeatures(
                 QDockWidget.DockWidgetFeature.DockWidgetMovable
                 | QDockWidget.DockWidgetFeature.DockWidgetClosable
@@ -90,7 +86,7 @@ class MainWindow(QMainWindow):
             )
             action = dock.toggleViewAction()
             view_menu.addAction(action)
-            self._view_actions[name] = action
+            self._view_actions[key] = action
 
             # Place dock based on monitor.dock
             if position == "left":
@@ -108,7 +104,7 @@ class MainWindow(QMainWindow):
 
         self._heartbeat_widgets: List[HeartbeatWidget] = []
         hb_items = list(self.health_service.heartbeats.items())
-        for idx, (name, heartbeat) in enumerate(hb_items):
+        for idx, (key, heartbeat) in enumerate(hb_items):
             heartbeat_widget = HeartbeatWidget(heartbeat)
             self._heartbeat_widgets.append(heartbeat_widget)
             status_bar.addWidget(heartbeat_widget)
@@ -121,17 +117,11 @@ class MainWindow(QMainWindow):
                 status_bar.addWidget(separator)
 
         # Create toolbar to monitor mqtt status
-        self.mqtt_status_label = QLabel("Unknown")
-        self.mqtt_status_label.setStyleSheet("color:gray;")
-
-        self._connect_button = QPushButton("Connect")
-        self._connect_button.clicked.connect(self.handle_connect_button_clicked)
+        mqtt_widget = MqttWidget(self._mqtt_service)
 
         tool_bar = QToolBar()
         tool_bar.setObjectName("mqttToolBar")
-        tool_bar.addWidget(self._connect_button)
-        tool_bar.addWidget(QLabel("Connection Status:"))
-        tool_bar.addWidget(self.mqtt_status_label)
+        tool_bar.addWidget(mqtt_widget)
         self.addToolBar(tool_bar)
 
     def close_tab(self, index: int):
@@ -184,13 +174,6 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, "Timeout", f"{self.sender.name} has timed out")
         self._mqtt_service.disconnect()
 
-    def handle_connect_button_clicked(self):
-        if self._mqtt_service.client.is_connected():
-            self._mqtt_service.stop()
-        else:
-            self._connect_button.setText("Connecting...")
-            self._mqtt_service.start()
-
     def handle_message(
         self,
         client: mqtt.Client,
@@ -206,34 +189,3 @@ class MainWindow(QMainWindow):
 
         for widget in self.monitor_widgets:
             widget.update_all()
-
-    def handle_connect(
-        self,
-        client: mqtt.Client,
-        userdata: Set,
-        flags: mqtt.ConnectFlags,
-        rc: mqtt.ReasonCode,
-    ):
-        self._connect_button.setText("Disconnect")
-        self.mqtt_status_label.setText("Connected")
-        self.mqtt_status_label.setStyleSheet("color:green;")
-
-    def handle_connect_fail(
-        self,
-        client: mqtt.Client,
-        userdata: Set,
-        rc: int,
-    ):
-        self._connect_button.setText("Connect")
-        self.mqtt_status_label.setText("Connection Failed")
-        self.mqtt_status_label.setStyleSheet("color:orange;")
-
-    def handle_disconnect(
-        self,
-        client: mqtt.Client,
-        userdata: Set,
-        rc: int,
-    ):
-        self._connect_button.setText("Connect")
-        self.mqtt_status_label.setText("Disconnected")
-        self.mqtt_status_label.setStyleSheet("color:red;")

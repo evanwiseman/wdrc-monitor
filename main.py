@@ -24,7 +24,7 @@ def main():
     main_window.show()
 
     sys.exit(app.exec())
-    mqtt_service.stop()
+    mqtt_service._cancel()
 
 
 if __name__ == "__main__":

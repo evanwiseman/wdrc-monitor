@@ -15,7 +15,7 @@ from src.constants import (
     DEFAULT_MQTT_SUBSCRIPTIONS,
     DEFAULT_MQTT_USERNAME,
     DEFAULT_ORGANIZATION_NAME,
-    DEFAULT_RETRIES_MAX,
+    DEFAULT_RETRIES_LIMIT,
     LIGHT_STYLESHEET,
     MQTT_CONFIG,
     STYLES_DIR,
@@ -142,5 +142,5 @@ class MqttConfig(Config):
         return self._data.get("subscriptions", DEFAULT_MQTT_SUBSCRIPTIONS)
 
     @property
-    def retries_max(self) -> int:
-        return self._data.get("retries_max", DEFAULT_RETRIES_MAX)
+    def retry_limit(self) -> int:
+        return self._data.get("retry_limit", DEFAULT_RETRIES_LIMIT)

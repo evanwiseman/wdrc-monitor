@@ -49,7 +49,12 @@ class HealthService(QObject):
                 raise TypeError(
                     f"{__name__}: monitor '{key}' must be a dict, got {type(cfg)}"
                 )
-            self._monitors[key] = Monitor(key, cfg)
+
+            name = cfg["name"]
+            if not isinstance(name, str):
+                name = key
+
+            self._monitors[key] = Monitor(name, cfg)
 
     def _load_heartbeats(self, heartbeats_cfg: dict) -> None:
         """Load heartbeat configurations."""
@@ -59,19 +64,23 @@ class HealthService(QObject):
                     f"{__name__}: heartbeat '{key}' must be a dict, got {type(cfg)}"
                 )
 
-            retries_max = cfg["retries_max"]
-            if not isinstance(retries_max, int):
+            name = cfg["name"]
+            if not isinstance(name, str):
+                name = key
+
+            retry_limit = cfg["retry_limit"]
+            if not isinstance(retry_limit, int):
                 raise TypeError(
-                    f"{__name__}: retries_max must be an int, got {type(retries_max)}"
+                    f"{__name__}: retries_max must be an int, got {type(retry_limit)}"
                 )
 
-            time_max = cfg["time_max"]
-            if not isinstance(time_max, int):
+            time_limit = cfg["time_limit"]
+            if not isinstance(time_limit, int):
                 raise TypeError(
-                    f"{__name__}: time_max must be an int, got {type(time_max)}"
+                    f"{__name__}: time_max must be an int, got {type(time_limit)}"
                 )
 
-            heartbeat = Heartbeat(key, retries_max, time_max)
+            heartbeat = Heartbeat(name, retry_limit, time_limit)
             self._heartbeats[key] = heartbeat
 
     @property
