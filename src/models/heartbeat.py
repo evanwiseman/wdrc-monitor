@@ -7,11 +7,15 @@ class Heartbeat(QObject):
 
     def __init__(self, name: str, retries_max: int, time_max: int) -> None:
         super().__init__()
+
+        # Name of heartbeat
         self._name: str = name
 
+        # Retries
         self._retry_attempt: int = 0
         self._retry_limit: int = retries_max
 
+        # Time and Timers
         self._time: int = 0
         self._time_max: int = time_max
 
@@ -21,19 +25,26 @@ class Heartbeat(QObject):
 
         self._ping = -1
 
+    @property
+    def name(self) -> str:
+        return self._name
+
     def _update_timer(self):
         """
         Update the timer, check if we've gone over time_max.
         If over time, heartbeat has expired and increment retries.
         Try again if retries are left.
         """
+        # Update time and emit the new value
         self._time += 1
         self.tick_signal.emit(self._time)
 
+        # Check if the timer has gone out of bounds
         if self._time >= self._time_max:
             self._retry_attempt += 1
             self._time = 0
 
+        # Check if we've timed out
         if self._is_timeout():
             self.stop()
             self.timeout_signal.emit()
@@ -48,10 +59,6 @@ class Heartbeat(QObject):
 
     def _is_timeout(self):
         return self._retry_attempt > self._retry_limit
-
-    @property
-    def name(self) -> str:
-        return self._name
 
     def start(self):
         """Start the time to count 1 second, on expiration go to update_timer"""

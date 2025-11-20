@@ -127,7 +127,9 @@ class HealthService(QObject):
         if not isinstance(cmd, str):
             raise TypeError(f"unable to parse command, must be str, got {type(cmd)}")
 
+        # look for cmd as key in all monitors
         if cmd in self._monitors:
+            # if invalid int try parsing as string
             value = msg["value"]
             if not isinstance(value, int):
                 try:
@@ -138,7 +140,9 @@ class HealthService(QObject):
                     )
             self._process_monitor(cmd, value)
 
+        # look for cmd as key in all heartbeats
         if cmd in self._heartbeats:
+            # if invalid int try parsing as string
             value = msg["value"]
             if not isinstance(value, int):
                 try:
@@ -149,7 +153,9 @@ class HealthService(QObject):
                     )
             self._process_heartbeat(cmd, value)
 
+        # check if cmd is wdlm
         if cmd.lower() == "wdlm":
+            # must be parsed as string to get seat data
             value = msg["value"]
             if not isinstance(value, str):
                 raise TypeError(f"unable to parse value, must be str, go {type(value)}")

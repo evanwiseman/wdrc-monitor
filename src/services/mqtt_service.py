@@ -28,14 +28,18 @@ class MqttService(QThread):
 
     def __init__(self):
         super().__init__()
+
+        # config
         self.config = MqttConfig()
 
+        # mqtt client
         self.client = mqtt.Client()
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
         self.client.on_connect_fail = self._on_connect_fail
 
+        # retries
         self._retry_attempt = 0
         self._should_retry = False
         self._attempt_retry_signal.connect(self._retry)
@@ -71,6 +75,8 @@ class MqttService(QThread):
             # Set username and password, connect to MQTT broker, and start loop
             self.client.username_pw_set(self.config.username, self.config.password)
             self.client.connect(self.config.host, self.config.port)
+
+            # Start loop, generates another thread
             self.client.loop_start()
         except Exception:
             self.stop()
@@ -82,25 +88,29 @@ class MqttService(QThread):
 
     def _retry(self):
         """Attempt to reconnect with retry limit."""
+        # Retry cancelled or in bad state
         if not self._should_retry:
             self._reset_retries()
             logger.info("retry cancelled by user")
             return
 
+        # Increment num retries
         self._retry_attempt += 1
         logger.info(f"retries left: {self._retry_attempt} / {self.config.retry_limit}")
         self.retries_signal.emit(self._retry_attempt)
 
+        # Reached max num retries, give up
         if self._retry_attempt >= self.config.retry_limit:
             logger.error(f"max retries ({self.config.retry_limit}) reached. Giving up.")
             self._reset_retries()
             return
 
-        # ensure thread is fully dead before restart
+        # Ensure thread is fully dead before restart
         if self.isRunning():
             logger.info("waiting for thread to stop before retry...")
             self.wait()
 
+        # Restart thread in hopes we connect
         self.start()
 
     # ========================
@@ -115,8 +125,11 @@ class MqttService(QThread):
         rc: int,
     ):
         self.connected = True
+
+        # Subscribe to topics
         for topic in self.config.subscriptions:
             self.client.subscribe(topic)
+
         self.connect_signal.emit(client, userdata, flags, rc)
         logger.info(f"connected to {client.host}:{client.port}: {rc}")
 
@@ -129,6 +142,7 @@ class MqttService(QThread):
         rc: int,
     ):
         self.connected = False
+
         self.connect_fail_signal.emit(client, userdata, rc)
         logger.warning(
             f"failed connecting to {self.config.host}:{self.config.port} rc={rc}"
@@ -143,13 +157,14 @@ class MqttService(QThread):
         rc: int,
     ):
         self.connected = False
+
         self.disconnect_signal.emit(client, userdata, rc)
         logger.info(f"disconnected from {self.config.host}:{self.config.port} rc={rc}")
 
-        if rc != 0:
+        if rc != 0:  # Unexpected result code, possible force connection
             logger.warning("Unexpected disconnection, attempting to reconnect...")
             self._attempt_retry_signal.emit()
-        else:
+        else:  # expected result code
             self._reset_retries()  # reset retries if we've succeeded
 
     def _on_message(
